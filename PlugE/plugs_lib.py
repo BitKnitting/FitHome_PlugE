@@ -4,18 +4,15 @@ import time
 import threading
 
 
-# This is the id of the FitHome Firebase project
-project_id = "fithome-9ebbd"
-
-
 class Plugs:
     # Pass in the monitor name.  The monitor name is assigned to the FitHome
     # member's monitor when it is installed in their home.
     def __init__(self):
         self.monitor_name = ''
+        self.project_id = ''
         self.plugs = []
         self.collecting = False
-        self.interval = 1
+        self.interval = None
         # Finds plugs that can send energy readings.
         try:
             a_dict = Discover.discover()
@@ -50,10 +47,11 @@ class Plugs:
             threading.Timer(self.interval, self._start_timer).start()
             self._collect_reading()
 
-    def start(self, monitor_name, interval=1):
+    def start(self, monitor_name, project_id, interval=2):
         self.collect = True
         self.monitor_name = monitor_name
         self.interval = interval
+        self.project_id = project_id
         self._start_timer()
 
     def stop(self):
@@ -90,5 +88,5 @@ class Plugs:
     def _make_path(self, plug_name):
         # Get current timestamp
         ts_str = str(int(time.time()))
-        return 'https://' + project_id+'.firebaseio.com/' + \
+        return 'https://' + self.project_id+'.firebaseio.com/' + \
             self.monitor_name+'/device_readings/'+plug_name+'/'+ts_str+'/.json'
