@@ -1,0 +1,1 @@
+PlugE documenation is located within [the FitHome.wiki](https://github.com/BitKnitting/FitHome/wiki/PlugE).
