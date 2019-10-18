@@ -23,6 +23,11 @@ class Plugs:
             for key in a_dict:
                 # If the plug can send energy readings....
                 if (a_dict[key].has_emeter):
+                    # Take out quotes and spaces from the name.
+                    plug_name = a_dict[key].alias
+                    plug_name = plug_name.strip('" ')
+                    a_dict[key].set_alias(plug_name)
+                    # Add the plug to the list of plugs that can take energy readings.
                     self.plugs.append(a_dict)
 
     def _collect_reading(self):
@@ -34,7 +39,6 @@ class Plugs:
                 smart_plug = plug[key]
                 p, i = self._get_reading(smart_plug)
                 if (p != None and i != None):
-                    print('power: {} current: {}'.format(p, i))
                     self._send_reading(p, i, smart_plug.alias)
 
     def _start_timer(self):
@@ -46,9 +50,20 @@ class Plugs:
             # turning on the timer.
             threading.Timer(self.interval, self._start_timer).start()
             self._collect_reading()
+    ########################################################
+    # start() collecting readings and putting the readings in
+    # The Firebase RT.
+    # Input:
+    # - monitor_name: The name assigned to the monitor when the
+    #   homeowner signed up for the FitHome experience.
+    # - project_id: The Firebase project ID where the readings are
+    #   written to.
+    # - interval:  The time between sampling.
+    ########################################################
 
     def start(self, monitor_name, project_id, interval=2):
         self.collect = True
+
         self.monitor_name = monitor_name
         self.interval = interval
         self.project_id = project_id
