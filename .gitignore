@@ -1,3 +1,4 @@
 env_variables
 PlugE/__pycache__
 PlugE/venv/
+PlugE/pyHS100/__pycache__/
