@@ -1,4 +1,6 @@
+.gitignore
 env_variables
+__pycache__
 PlugE/__pycache__
 PlugE/venv/
 PlugE/pyHS100/__pycache__/

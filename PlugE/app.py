@@ -6,7 +6,10 @@ from plugs import Plugs
 app = Flask(__name__)
 p = Plugs()
 
-
+#
+# Pass the monitor name.  This needs to be the same as the alias name
+# of the plug.  The name should map to a known device, like 'microwave'.
+#
 @app.route('/start', methods=['POST'])
 def start():
     if not 'name' in request.json:

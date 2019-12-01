@@ -3,16 +3,48 @@ import requests
 import time
 import threading
 
+#
+# The Reading class is a superclass for
+
+
+class Reading:
+    def __init__(self, path, appliance, interval=2):
+        self.path = path
+        self.appliance = appliance
+        self.interval = interval
+
+    def send(self):
+
+        pass
+#
+
+
+class MongoDBReading(Reading):
+    # The path is set to the rasp pi's Flask address.
+    # e.g.: http://192.168.86.209:4001
+    # def __init__(self):
+    #     super().__init__()
+
+
+class FirebaseReading(Reading):
+    # The path is set to the Firebase path...
+    #   ts_str = str(int(time.time()))
+    #     return 'https://' + self.project_id+'.firebaseio.com/' + \
+    #         self.monitor_name+'/device_readings/'+plug_name+'/'+ts_str+'/.json'
+    # Probably with9ut the ts_str - I'm updating the code, so right now focused on Mongodb.
+    #
+
+    pass
+
 
 class Plugs:
     # Pass in the monitor name.  The monitor name is assigned to the FitHome
     # member's monitor when it is installed in their home.
-    def __init__(self):
-        self.monitor_name = ''
-        self.project_id = ''
+    def __init__(self,Reading):
+        self.monitor_name = Reading.appliance
         self.plugs = []
         self.collecting = False
-        self.interval = None
+        self.interval = Reading.interval
         # Finds plugs that can send energy readings.
         try:
             a_dict = Discover.discover()
@@ -30,26 +62,6 @@ class Plugs:
                     # Add the plug to the list of plugs that can take energy readings.
                     self.plugs.append(a_dict)
 
-    def _collect_reading(self):
-
-        for plug in self.plugs:
-            # plug is a dictionary where the key is the (string) ip addr of the
-            # Smart device
-            for key in plug:
-                smart_plug = plug[key]
-                p, i = self._get_reading(smart_plug)
-                if (p != None and i != None):
-                    self._send_reading(p, i, smart_plug.alias)
-
-    def _start_timer(self):
-        if (self.collect):
-            # I saw this in a StackOverflow answer..which now I can't find...
-            # start a timer for the interval amount then call the method
-            # to collect and send a reading.  The timer goes off and
-            # calls itself again.  Then I use the collect flag to stop
-            # turning on the timer.
-            threading.Timer(self.interval, self._start_timer).start()
-            self._collect_reading()
     ########################################################
     # start() collecting readings and putting the readings in
     # The Firebase RT.
@@ -105,3 +117,25 @@ class Plugs:
         ts_str = str(int(time.time()))
         return 'https://' + self.project_id+'.firebaseio.com/' + \
             self.monitor_name+'/device_readings/'+plug_name+'/'+ts_str+'/.json'
+
+    def _collect_reading(self):
+
+        for plug in self.plugs:
+            # plug is a dictionary where the key is the (string) ip addr of the
+            # Smart device
+            for key in plug:
+                smart_plug = plug[key]
+                p, i = self._get_reading(smart_plug)
+                if (p != None and i != None):
+                    # The smart plug's alias == self.monitor_name
+                    self._send_reading(p, i, smart_plug.alias)
+
+    def _start_timer(self):
+        if (self.collect):
+            # I saw this in a StackOverflow answer..which now I can't find...
+            # start a timer for the interval amount then call the method
+            # to collect and send a reading.  The timer goes off and
+            # calls itself again.  Then I use the collect flag to stop
+            # turning on the timer.
+            threading.Timer(self.interval, self._start_timer).start()
+            self._collect_reading()
