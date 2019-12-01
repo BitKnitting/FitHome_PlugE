@@ -1,4 +1,7 @@
 .gitignore
+.DS_Store
+._.DS_Store
+PlugE/._device_thresholds.json
 env_variables
 __pycache__
 PlugE/__pycache__

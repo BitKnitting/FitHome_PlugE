@@ -14,7 +14,8 @@ from datetime import datetime
 import json
 
 #
-# The Reading class is a superclass for
+# The DB class is used as an abstract class so that different
+# back ends can be used to store the data.
 
 
 class DB:
@@ -24,6 +25,11 @@ class DB:
     def send(self):
 
         pass
+
+#
+# Store the readings into mongodb.  I'm using mongodb that's on the
+# same rasp pi that is running this script.
+#
 
 
 class MongoDB(DB):
@@ -59,16 +65,31 @@ class FirebaseDB(DB):
 
 
 class Plug:
-    # Pass in the monitor name.  The monitor name is assigned to the FitHome
-    # member's monitor when it is installed in their home.
-    def __init__(self, appliance):
+    # - appliance is the name of the appliance.  It should be something well known
+    # like 'microwave'...it needs to match the alias name of the smart plug.
+    # - db - previously set up via an instance of the DB class.
+    # - interval:  The time between sampling.
+    # - detect_on tells the code to detect during run time if the device is on or off
+
+    def __init__(self, appliance, db, interval=2, detect_on=True):
         self.appliance = appliance.lower()
         # The collecting variable is used to know the state...the start
         # method sets collecting to True.  The stop, to False.
         self.collecting = False
-        self.interval = None
+        self.interval = interval
+        self.db = db
 
         self.plug = None
+        # These three variables are used for real time detection of a device
+        # If detect_cycle is False, the device doesn't cycle. E.g.s of devices
+        # that cycle include washing machines, refrigerators.  E.g.s of devices
+        # that don't cycle include toasters, microwaves...
+        # If the detect cycle is False, then real time detection occurs
+        # if detect_low < P < detect_high -> device is on.
+        self.detect_on = detect_on
+        self.detect_cycle = False
+        self.detect_low = 0
+        self.detect_high = 0
         # Find the plug with the alias named 'appliance'
         try:
             # Get the dictionary of smart devices.
@@ -84,31 +105,37 @@ class Plug:
                 # Take out quotes and spaces from the name.
                 name = a_dict[key].alias.strip('" ').lower()
                 if (name == self.appliance):
-                    print('appliance {} match'.format(name))
                     self.plug = value
                     break
+        if (detect_on):
+            try:
+                with open("device_thresholds.json", "r") as file:
+                    thresholds = json.load(file)
+                    for k in thresholds:
+                        if (k == self.appliance):
+                            self.detect_low = thresholds[k]['low']
+                            self.detect_high = thresholds[k]['high']
+                            break
+                if (self.detect_high == 0):
+                    raise ValueError(
+                        'Values for threshold detection are not available.')
+
+            except FileNotFoundError as err:
+                print(err)
+                return
 
     ########################################################
-    # start() collecting readings and putting the readings in
-    # The Firebase RT.
-    # Input:
-    # - monitor_name: The name assigned to the monitor when the
-    #   homeowner signed up for the FitHome experience.
-    # - project_id: The Firebase project ID where the readings are
-    #   written to.
-    # - interval:  The time between sampling.
+    # start() collecting readings
     #
     # RETURN:
     #  False if __init__ could not find a plug with an alias name that
     #  is the same as the appliance name.
     ########################################################
 
-    def start(self, db, interval=2):
+    def start(self):
         if (self.plug is None):
             return False
         self.collect = True
-        self.interval = interval
-        self.db = db
         self._start_timer()
         return True
 
@@ -129,11 +156,11 @@ class Plug:
             self._handle_reading()
 
     def _handle_reading(self):
-        p, i = self._get_reading()
+        p, i = self.get_reading()
         if (p != None and i != None):
-            self._send_reading(p, i)
+            self.send_reading(p, i)
 
-    def _get_reading(self):
+    def get_reading(self):
         try:
             # Contact plug and get energy measurements.
 
@@ -146,12 +173,33 @@ class Plug:
         else:
             return p, i
 
-    def _send_reading(self, power, current):
+    def send_reading(self, power, current):
         now = datetime.now()
         timestamp = datetime.timestamp(now)
-        data = '{' + \
-            ' "timestamp":{},"P":{},"I":{}'.format(
-                timestamp, power, current) + '}'
+        # This is hoaky right now...focussed on micowave, since this is the device
+        # I have observed.
+        # The goal is to determine in real time is the device is on or off.
+        # Then I can sync this with the aggregate readings as a column of 0 and 1's
+        # e.g.: column name = 'microwave'.  rows are either 0 or 1.
+        device_on = 0
+        if (self.detect_on):
+            print('power: {} low: {} high: {}'.format(
+                power, self.detect_low, self.detect_high))
+            if (self.detect_low < power < self.detect_high):
+                device_on = 1
+            else:
+                device_on = 0
+            print('device is: {}'.format(device_on))
+            data = '{' + \
+                ' "timestamp":{},"P":{},"I":{},"on":{}'.format(
+                    timestamp, power, current, device_on) + '}'
+            # if device_on, send Flask app microwave_on
+            # if device_on = 0 send flask app microwave_off
+            # hardcode for now to get this working then fix as more devices are added.
+        else:
+            data = '{' + \
+                ' "timestamp":{},"P":{},"I":{}'.format(
+                    timestamp, power, current) + '}'
         self.db.send(data)
         # try:
         #     response = requests.put(self.path, data=data)
