@@ -1,7 +1,7 @@
 {
     "microwave": {
         "cycle": false,
-        "low": 20,
+        "low": 120,
         "high": 2000
     }
 }

@@ -12,6 +12,7 @@ import threading
 import pymongo
 from datetime import datetime
 import json
+from config import read_config
 
 #
 # The DB class is used as an abstract class so that different
@@ -71,7 +72,7 @@ class Plug:
     # - interval:  The time between sampling.
     # - detect_on tells the code to detect during run time if the device is on or off
 
-    def __init__(self, appliance, db, interval=2, detect_on=True):
+    def __init__(self, appliance, db, interval=1, detect_on=True):
         self.appliance = appliance.lower()
         # The collecting variable is used to know the state...the start
         # method sets collecting to True.  The stop, to False.
@@ -90,6 +91,7 @@ class Plug:
         self.detect_cycle = False
         self.detect_low = 0
         self.detect_high = 0
+        self.url = ''
         # Find the plug with the alias named 'appliance'
         try:
             # Get the dictionary of smart devices.
@@ -111,6 +113,7 @@ class Plug:
             try:
                 with open("device_thresholds.json", "r") as file:
                     thresholds = json.load(file)
+                    self.url = read_config('url')
                     for k in thresholds:
                         if (k == self.appliance):
                             self.detect_low = thresholds[k]['low']
@@ -196,6 +199,15 @@ class Plug:
             # if device_on, send Flask app microwave_on
             # if device_on = 0 send flask app microwave_off
             # hardcode for now to get this working then fix as more devices are added.
+            payload = '{"device_on":' + str(device_on)+'}'
+            headers = {'Content-Type': "application/json"}
+            try:
+                response = requests.request(
+                    "POST", self.url, data=payload, headers=headers)
+            except IndexError as e:
+                print('error: {}'.format(e))
+                return False
+            print('response: {}'.format(response.text))
         else:
             data = '{' + \
                 ' "timestamp":{},"P":{},"I":{}'.format(
