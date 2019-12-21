@@ -109,7 +109,7 @@ class Plug:
                 if (name == self.appliance):
                     self.plug = value
                     break
-        if (detect_on):
+        if (self.detect_on):
             try:
                 with open("device_thresholds.json", "r") as file:
                     thresholds = json.load(file)
@@ -179,7 +179,7 @@ class Plug:
     def send_reading(self, power, current):
         now = datetime.now()
         timestamp = datetime.timestamp(now)
-        # This is hoaky right now...focussed on micowave, since this is the device
+        # This is hoaky right now...focussed on microwave, since this is the device
         # I have observed.
         # The goal is to determine in real time is the device is on or off.
         # Then I can sync this with the aggregate readings as a column of 0 and 1's
@@ -213,20 +213,3 @@ class Plug:
                 ' "timestamp":{},"P":{},"I":{}'.format(
                     timestamp, power, current) + '}'
         self.db.send(data)
-        # try:
-        #     response = requests.put(self.path, data=data)
-        #     if (response.status_code == 400):
-        #         print(response.text)
-        #         return False
-
-        # except IndexError as e:
-        #     print('error: {}'.format(e))
-        #     return False
-        # else:
-        #     return True
-
-    # def _make_path(self, plug_name):
-    #     # Get current timestamp
-    #     ts_str = str(int(time.time()))
-    #     return 'https://' + self.project_id+'.firebaseio.com/' + \
-    #         self.monitor_name+'/device_readings/'+plug_name+'/'+ts_str+'/.json'
